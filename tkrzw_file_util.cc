@@ -200,6 +200,7 @@ Status GetRealPath(const std::string& _path, std::string* real_path) {
   delete[] lbuf;
   return Status(Status::SUCCESS);
 #else
+  auto& path = _path;
   assert(real_path != nullptr);
   real_path->clear();
   char buf[PATH_MAX];
@@ -235,6 +236,7 @@ Status ReadFileStatus(const std::string& _path, FileStatus* fstats) {
   fstats->modified_time = li.QuadPart;
   return Status(Status::SUCCESS);
 #else
+  auto& path = _path;
   assert(fstats != nullptr);
   struct stat sbuf;
   if (stat(path.c_str(), &sbuf) != 0) {
@@ -372,6 +374,7 @@ Status TruncateFile(const std::string& _path, int64_t size) {
   return status;
 #else
   assert(size >= 0);
+  auto& path = _path;
   if (truncate(path.c_str(), size) != 0) {
     return GetErrnoStatus("truncate", errno);
   }
@@ -656,6 +659,7 @@ Status SynchronizeFile(const std::string& _path) {
   }
   return status;
 #else
+  auto& path = _path;
   const int32_t fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
     return GetErrnoStatus("open", errno);
