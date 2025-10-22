@@ -199,6 +199,7 @@ extern "C" {
 #include <processthreadsapi.h>
 #include <psapi.h>
 #include <sysinfoapi.h>
+#include <cwchar>
 
 #endif
 

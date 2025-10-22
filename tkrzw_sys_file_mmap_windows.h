@@ -82,10 +82,11 @@ MemoryMapParallelFileImpl::~MemoryMapParallelFileImpl() {
 }
 
 Status MemoryMapParallelFileImpl::Open(
-    const std::string& path, bool writable, int32_t options) {
+    const std::string& _path, bool writable, int32_t options) {
   if (file_handle_ != nullptr) {
     return Status(Status::PRECONDITION_ERROR, "opened file");
   }
+  auto path = u8_to_wstr(_path);
 
   // Opens the file.
   DWORD amode = GENERIC_READ;
@@ -105,7 +106,7 @@ Status MemoryMapParallelFileImpl::Open(
       }
     }
   }
-  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
@@ -175,7 +176,7 @@ Status MemoryMapParallelFileImpl::Open(
 
   // Updates the internal data.
   file_handle_ = file_handle;
-  path_ = path;
+  path_ = _path;
   file_size_.store(file_size);
   map_handle_ = map_handle;
   map_ = static_cast<char*>(map);
@@ -658,11 +659,12 @@ MemoryMapAtomicFileImpl::~MemoryMapAtomicFileImpl() {
 }
 
 Status MemoryMapAtomicFileImpl::Open(
-    const std::string& path, bool writable, int32_t options) {
+    const std::string& _path, bool writable, int32_t options) {
   std::lock_guard<SpinSharedMutex> lock(mutex_);
   if (file_handle_ != nullptr) {
     return Status(Status::PRECONDITION_ERROR, "opened file");
   }
+  auto path = u8_to_wstr(_path);
 
   // Opens the file.
   DWORD amode = GENERIC_READ;
@@ -682,7 +684,7 @@ Status MemoryMapAtomicFileImpl::Open(
       }
     }
   }
-  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
@@ -752,7 +754,7 @@ Status MemoryMapAtomicFileImpl::Open(
 
   // Updates the internal data.
   file_handle_ = file_handle;
-  path_ = path;
+  path_ = _path;
   file_size_ = file_size;
   map_handle_ = map_handle;
   map_ = static_cast<char*>(map);

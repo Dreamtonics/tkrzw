@@ -177,25 +177,26 @@ std::string PathToExtension(const std::string& path) {
   return base_name.substr(pos + 1);
 }
 
-Status GetRealPath(const std::string& path, std::string* real_path) {
+Status GetRealPath(const std::string& _path, std::string* real_path) {
 #if defined(_SYS_WINDOWS_)
+  auto path = u8_to_wstr(_path);
   assert(real_path != nullptr);
-  char buf[4096];
-  DWORD size = GetFullPathName(path.c_str(), sizeof(buf), buf, nullptr);
+  wchar_t buf[4096];
+  DWORD size = GetFullPathNameW(path.c_str(), sizeof(buf), buf, nullptr);
   if (size < 1) {
     return GetErrnoStatus("GetFullPathName", errno);
   }
   if (size < sizeof(buf)) {
-    *real_path = std::string(buf);
+    *real_path = wstr_to_u8(std::wstring(buf));
     return Status(Status::SUCCESS);
   }
-  char* lbuf = new char[size];
-  DWORD nsiz = GetFullPathName(path.c_str(), size, lbuf, nullptr);
+  wchar_t* lbuf = new wchar_t[size];
+  DWORD nsiz = GetFullPathNameW(path.c_str(), size, lbuf, nullptr);
   if (nsiz < 1 || nsiz >= size) {
     delete[] lbuf;
     return GetErrnoStatus("GetFullPathName", errno);
   }
-  *real_path = std::string(lbuf);
+  *real_path = wstr_to_u8(lbuf);
   delete[] lbuf;
   return Status(Status::SUCCESS);
 #else
@@ -210,11 +211,12 @@ Status GetRealPath(const std::string& path, std::string* real_path) {
 #endif
 }
 
-Status ReadFileStatus(const std::string& path, FileStatus* fstats) {
+Status ReadFileStatus(const std::string& _path, FileStatus* fstats) {
 #if defined(_SYS_WINDOWS_)
+  auto path = u8_to_wstr(_path);
   assert(fstats != nullptr);
   WIN32_FILE_ATTRIBUTE_DATA ibuf;
-  if (!GetFileAttributesEx(path.c_str(), GetFileExInfoStandard, &ibuf)) {
+  if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &ibuf)) {
     return GetErrnoStatus("GetFileAttributesEx", errno);
   }
   if (ibuf.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -348,10 +350,11 @@ std::string ReadFileSimple(const std::string& path, std::string_view default_val
       content : std::string(default_value);
 }
 
-Status TruncateFile(const std::string& path, int64_t size) {
+Status TruncateFile(const std::string& _path, int64_t size) {
 #if defined(_SYS_WINDOWS_)
   assert(size >= 0);
-  HANDLE file_handle = CreateFile(path.c_str(), GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  auto path = u8_to_wstr(_path);
+  HANDLE file_handle = CreateFileW(path.c_str(), GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return Status(Status::SYSTEM_ERROR, "CreateFile failed");
   }
@@ -515,18 +518,18 @@ Status ReadDirectory(const std::string& path, std::vector<std::string>* children
   }
   dpath.append("*");
   WIN32_FIND_DATA fbuf;
-  HANDLE dh = FindFirstFile(dpath.c_str(), &fbuf);
+  HANDLE dh = FindFirstFileW(u8_to_wstr(dpath).c_str(), &fbuf);
   if (!dh || dh == INVALID_HANDLE_VALUE) {
     return GetErrnoStatus("FindFirstFile", errno);
   }
-  if (std::strcmp(fbuf.cFileName, CURRENT_DIR_NAME) &&
-      std::strcmp(fbuf.cFileName, PARENT_DIR_NAME)) {
-    children->push_back(fbuf.cFileName);
+  if (std::strcmp(wstr_to_u8(fbuf.cFileName).c_str(), CURRENT_DIR_NAME) &&
+      std::strcmp(wstr_to_u8(fbuf.cFileName).c_str(), PARENT_DIR_NAME)) {
+    children->push_back(wstr_to_u8(fbuf.cFileName));
   }
   while (FindNextFile(dh, &fbuf)) {
-    if (std::strcmp(fbuf.cFileName, CURRENT_DIR_NAME) &&
-        std::strcmp(fbuf.cFileName, PARENT_DIR_NAME)) {
-      children->push_back(fbuf.cFileName);
+    if (std::strcmp(wstr_to_u8(fbuf.cFileName).c_str(), CURRENT_DIR_NAME) &&
+        std::strcmp(wstr_to_u8(fbuf.cFileName).c_str(), PARENT_DIR_NAME)) {
+      children->push_back(wstr_to_u8(fbuf.cFileName));
     }
   }
   if (!FindClose(dh)) {
@@ -629,17 +632,18 @@ Status RemoveDirectory(const std::string& path, bool recursive) {
   return status;
 }
 
-Status SynchronizeFile(const std::string& path) {
+Status SynchronizeFile(const std::string& _path) {
 #if defined(_SYS_WINDOWS_)
-  if (PathIsDirectory(path)) {
+  if (PathIsDirectory(_path)) {
     return Status(Status::SUCCESS);
   }
+  auto path = u8_to_wstr(_path);
   const DWORD amode = GENERIC_READ;
   const DWORD smode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
   const DWORD cmode = OPEN_EXISTING;
   const DWORD flags = FILE_FLAG_RANDOM_ACCESS;
   const HANDLE file_handle =
-      CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+      CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }

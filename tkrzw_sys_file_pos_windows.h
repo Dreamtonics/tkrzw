@@ -91,7 +91,8 @@ PositionalParallelFileImpl::~PositionalParallelFileImpl() {
   }
 }
 
-Status PositionalParallelFileImpl::Open(const std::string& path, bool writable, int32_t options) {
+Status PositionalParallelFileImpl::Open(const std::string& _path, bool writable, int32_t options) {
+  auto path = u8_to_wstr(_path);
   if (file_handle_ != nullptr) {
     return Status(Status::PRECONDITION_ERROR, "opened file");
   }
@@ -120,7 +121,7 @@ Status PositionalParallelFileImpl::Open(const std::string& path, bool writable, 
   if (access_options_ & PositionalFile::ACCESS_SYNC) {
     flags |= FILE_FLAG_WRITE_THROUGH;
   }
-  HANDLE file_handle = CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
@@ -173,7 +174,7 @@ Status PositionalParallelFileImpl::Open(const std::string& path, bool writable, 
   file_handle_ = file_handle;
   head_buffer_ = nullptr;
   head_buffer_size_ = 0;
-  path_ = path;
+  path_ = _path;
   file_size_.store(file_size);
   trunc_size_.store(trunc_size);
   writable_ = writable;
@@ -785,7 +786,8 @@ PositionalAtomicFileImpl::~PositionalAtomicFileImpl() {
   }
 }
 
-Status PositionalAtomicFileImpl::Open(const std::string& path, bool writable, int32_t options) {
+Status PositionalAtomicFileImpl::Open(const std::string& _path, bool writable, int32_t options) {
+  auto path = u8_to_wstr(_path);
   std::lock_guard<std::shared_mutex> lock(mutex_);
   if (file_handle_ != nullptr) {
     return Status(Status::PRECONDITION_ERROR, "opened file");
@@ -809,7 +811,7 @@ Status PositionalAtomicFileImpl::Open(const std::string& path, bool writable, in
       }
     }
   }
-  HANDLE file_handle = CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
@@ -862,7 +864,7 @@ Status PositionalAtomicFileImpl::Open(const std::string& path, bool writable, in
   file_handle_ = file_handle;
   head_buffer_ = nullptr;
   head_buffer_size_ = 0;
-  path_ = path;
+  path_ = _path;
   file_size_ = file_size;
   trunc_size_ = trunc_size;
   writable_ = writable;

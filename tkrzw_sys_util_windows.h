@@ -27,6 +27,37 @@
 #include "tkrzw_thread_util.h"
 
 namespace tkrzw {
+inline void u8_to_wstr(std::wstring& out, std::string_view u8) {
+  if (u8.empty()) {
+    out.clear();
+    return;
+  }
+  DWORD len = MultiByteToWideChar(CP_UTF8, 0, u8.data(), u8.size(), nullptr, 0);
+  out.resize(len);
+  MultiByteToWideChar(CP_UTF8, 0, u8.data(), u8.size(), &out[0], len);
+}
+
+inline void wstr_to_u8(std::string& out, std::wstring_view wstr) {
+  if (wstr.empty()) {
+    out.clear();
+    return;
+  }
+  DWORD len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstr.size(), nullptr, 0, nullptr, nullptr);
+  out.resize(len);
+  WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstr.size(), &out[0], len, nullptr, nullptr);
+}
+
+inline std::wstring u8_to_wstr(std::string_view u8) {
+  std::wstring out;
+  u8_to_wstr(out, u8);
+  return out;
+}
+
+inline std::string wstr_to_u8(std::wstring_view wstr) {
+  std::string out;
+  wstr_to_u8(out, wstr);
+  return out;
+}
 
 /**
  * Get the message string of a system error code.
@@ -34,14 +65,17 @@ namespace tkrzw {
  * @return The message string of the error code.
  */
 inline std::string GetSysErrorString(int32_t error_code) {
-  LPVOID msg_buf;
-  const size_t msg_size = FormatMessageA(
-      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_ENGLISH_US),
-      (LPTSTR)&msg_buf, 0, nullptr);
-  std::string msg_str(static_cast<char*>(msg_buf), msg_size);
-  LocalFree(msg_buf);
-  return msg_str;
+  wchar_t buf[1024];
+  auto err = GetLastError();
+  std::string out;
+  auto r = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), buf, std::size(buf), nullptr);
+  if (r == 0) {
+    out = "failed to format error string";
+  }
+  else {
+    return wstr_to_u8(std::wstring_view(buf, r));
+  }
+  return out;
 }
 
 /**
@@ -101,12 +135,13 @@ inline Status TruncateFileInternally(HANDLE file_handle, int64_t length) {
  * @param length The new length of the file.
  * @return The result status.
  */
-inline Status TruncateFileExternally(const std::string& path, int64_t length) {
+inline Status TruncateFileExternally(const std::string& _path, int64_t length) {
+  std::wstring const path = u8_to_wstr(_path);
   const DWORD amode = GENERIC_WRITE;
   const DWORD smode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
   const DWORD cmode = OPEN_EXISTING;
   const DWORD flags = FILE_FLAG_RANDOM_ACCESS;
-  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileW(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
