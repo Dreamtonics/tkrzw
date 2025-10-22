@@ -37,7 +37,7 @@ inline std::string GetSysErrorString(int32_t error_code) {
   LPVOID msg_buf;
   const size_t msg_size = FormatMessageA(
       FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_ENGLISH_US),
       (LPTSTR)&msg_buf, 0, nullptr);
   std::string msg_str(static_cast<char*>(msg_buf), msg_size);
   LocalFree(msg_buf);
@@ -106,7 +106,7 @@ inline Status TruncateFileExternally(const std::string& path, int64_t length) {
   const DWORD smode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
   const DWORD cmode = OPEN_EXISTING;
   const DWORD flags = FILE_FLAG_RANDOM_ACCESS;
-  HANDLE file_handle = CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }

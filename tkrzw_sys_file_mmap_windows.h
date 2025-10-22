@@ -105,7 +105,7 @@ Status MemoryMapParallelFileImpl::Open(
       }
     }
   }
-  HANDLE file_handle = CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
@@ -682,7 +682,7 @@ Status MemoryMapAtomicFileImpl::Open(
       }
     }
   }
-  HANDLE file_handle = CreateFile(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
+  HANDLE file_handle = CreateFileA(path.c_str(), amode, smode, nullptr, cmode, flags, nullptr);
   if (file_handle == nullptr || file_handle == INVALID_HANDLE_VALUE) {
     return GetSysErrorStatus("CreateFile", GetLastError());
   }
